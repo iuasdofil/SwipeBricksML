@@ -1,2 +1,0 @@
-# SwipeBricksML
-SwipeBrics ML
