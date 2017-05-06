@@ -5,6 +5,7 @@ import cv2
 import shutil
 import tensorflow as tf
 import digit_predict
+import blue_predict
 
 def screenshot():
 	files = os.listdir(os.getcwd() + "/screenshot")
@@ -14,12 +15,13 @@ def screenshot():
 		if file.startswith("screenshot") and file.endswith("png"):
 			count += 1
 	
-	filename = "screenshot_%04d.png"%(count+1)
+	filename = "screenshot_%04d.png"%(count)
 	
 	os.system("adb shell screencap -p /data/local/tmp/"+filename)
 	os.system("adb pull /data/local/tmp/"+filename)
 	
-	shutil.move(filename, "/mnt/hgfs/SwipeBricksML/screenshot/"+filename)
+	os.rename(filename, "./screenshot/"+filename)
+	shutil.copyfile("./screenshot/"+filename, "/mnt/hgfs/SwipeBricksML/screenshot/"+filename)
 	# os.rename(filename, "/mnt/hgfs/SwipeBricksML/screenshot/"+filename)
 	
 	print(filename)
@@ -37,7 +39,7 @@ def deleteFile():
 	
 	os.chdir(cwd)
 	
-def getPixel(filename):
+def getPosition(filename):
 	heights = [364, 444, 524, 604, 684, 764, 844]
 	widths = [4, 124, 244, 364, 484, 604]
 
@@ -63,12 +65,12 @@ def getPixel(filename):
 			else:
 				box = (width, height, width + width_size, height + height_size)
 				region = img.crop(box)
-				crop = "/mnt/hgfs/SwipeBricksML/crop_image/crop_img[%d][%d].png"%(i, j)
+				crop_path = "/mnt/hgfs/SwipeBricksML/crop_image/crop_img[%d][%d].png"%(i, j)
 				
 				region.save("crop_image/crop_img[%d][%d].png"%(i, j))
-				shutil.move("crop_image/crop_img[%d][%d].png"%(i, j), crop)
+				shutil.move("crop_image/crop_img[%d][%d].png"%(i, j), crop_path)
 				
-				num = digit_ocr(crop)
+				num = digit_ocr(crop_path, 0)
 				
 				arr[i][j] = num
 				
@@ -76,16 +78,38 @@ def getPixel(filename):
 			
 			if r == 58 and g == 211 and b == 97:
 				arr[i][j] = -1
-				
-	return arr
+	
+	blue_ball = 0
+	
+	for x in range(719):
+		r, g, b = rgb[985][x]
+		
+		if r != 230 or g != 230 or b != 230:
+			blue_ball = x + 14
+			height = 985 + 35
+			width = x + 14 - 45
+			
+			box = (width, height, width + 85, height +35)
+			region = img.crop(box)
+			
+			src_path = "crop_image/ball_number.png"
+			dst_path = "/mnt/hgfs/SwipeBricksML/crop_image/ball_number.png"
+			region.save(src_path)
+			shutil.move(src_path, dst_path)
+		
+			ball_num = digit_ocr(dst_path, 1)
+			break
+			
+	return arr, ball_num, blue_ball
 
-def digit_ocr(filename):
+def digit_ocr(filename, mode):
 	im = cv2.imread(filename)
 	im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
 	blur = cv2.GaussianBlur(im, (5, 5), 0)
 	thresh = cv2.adaptiveThreshold(blur, 255, 1, 1, 11, 2)
 	
-	contours, hierarchy = cv2.findContours(thresh, cv2.RETR_LIST, 
+	contours, hierarchy = cv2.findContours(thresh, 
+		cv2.RETR_LIST, 
 		cv2.CHAIN_APPROX_SIMPLE)
 		
 	samples = np.empty((0, 100))
@@ -97,11 +121,14 @@ def digit_ocr(filename):
 		if cv2.contourArea(cnt)>50:
 			[x, y, w, h] = cv2.boundingRect(cnt)
 			
-			if 28 < h and h < 36:
+			if 27 < h and h < 36 and w > 5:
 				num_file = crop_number(im, x, y, w, h)
 				number_files.append(num_file)
 				
-				num = digit_predict.digit_predict(number_files)
+	if mode == 0:
+		num = digit_predict.digit_predict(number_files)
+	else:
+		num = blue_predict.digit_predict(number_files)
 	
 	return num
 	
@@ -119,18 +146,21 @@ def crop_number(im, x, y, w, h):
 		file.write("%d"%int(lines[1]))
 	
 	return filename
+	
 def main():
 	filename = screenshot()
 	deleteFile()
-	arr = getPixel(filename)
+	position, ball_num, blue_ball = getPosition(filename)
 	
-	print("Box and ball position")
+	print("Box and green ball position")
 	for i in range(7):
 		str = ""
 		for j in range(6):
-			str += "%03d "%arr[i][j]
+			str += "%03d "%position[i][j]
 			
 		print(str)
+	print("ball X:",blue_ball, "num:",ball_num)
+	
 		
 if __name__ == "__main__":
 	main()

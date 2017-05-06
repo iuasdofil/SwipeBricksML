@@ -10,11 +10,16 @@ def get_feature(number_files):
 			img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
 			height, width = img.shape
 			
+			if height > 32:
+				height = 32
+			if width > 24:
+				width = 24
+			
 			for y in range(height):
 				for x in range(width):
 					file.write("%d,"%img[y, x])
 				for x in range(24-width):
-					file.write("0,"%img[y, x])
+					file.write("0,")
 					
 			for y in range(32-height):
 				for x in range(24):
@@ -55,15 +60,10 @@ def digit_predict(number_files):
 	
 	num = 0
 	idx = 1
+	
 	for predic in predictions:
 		num += predic * idx
 		idx *= 10
 	
 	return num
-	
-
-if __name__ == "__main__":
-	main()
-	
-	
 	
