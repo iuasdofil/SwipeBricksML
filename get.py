@@ -7,6 +7,13 @@ import tensorflow as tf
 import digit_predict
 import blue_predict
 import math
+import random, time
+
+digit_prediction = digit_predict.digit_predict()
+digit_prediction.start()
+
+blue_prediction = blue_predict.blue_predict()
+blue_prediction.start()
 
 def screenshot():
 	files = os.listdir(os.getcwd() + "/screenshot")
@@ -22,17 +29,11 @@ def screenshot():
 	os.system("nox_adb pull /data/local/tmp/"+filename)
 	
 	os.rename(filename, "./screenshot/"+filename)
-	# shutil.copyfile("./screenshot/"+filename, "/mnt/hgfs/SwipeBricksML/screenshot/"+filename)
-	# os.rename(filename, "/mnt/hgfs/SwipeBricksML/screenshot/"+filename)
-	
 	print(filename)
 	return os.getcwd() + "/screenshot/" + filename
 	
-	
 def deleteFile():
 	cwd = os.getcwd()
-	
-	# os.chdir("/mnt/hgfs/SwipeBricksML/crop_image")
 	os.chdir("crop_image")
 	files = os.listdir(os.getcwd())
 	
@@ -70,15 +71,17 @@ def getPosition(filename):
 				crop_path = os.getcwd() + "/crop_image/crop_img[%d][%d].png"%(i, j)
 				
 				region.save("crop_image/crop_img[%d][%d].png"%(i, j))
-				# shutil.move("crop_image/crop_img[%d][%d].png"%(i, j), crop_path)
 				
 				num = digit_ocr(crop_path, 0)
-				
+				if num == -100:
+					return None, None, None
+					
 				arr[i][j] = num
 				
 			r, g, b = rgb[mid_h[i]][mid_w[j]]
 			
-			if r == 58 and g == 211 and b == 97:
+			# find green ball
+			if (55 < r and r < 60) and (210 < g and g < 215) and (95 < b and b < 100):
 				arr[i][j] = -1
 	
 	blue_ball = 0
@@ -95,9 +98,7 @@ def getPosition(filename):
 			region = img.crop(box)
 			
 			src_path = "crop_image/ball_number.png"
-			dst_path = "crop_image/ball_number.png"
 			region.save(src_path)
-			# shutil.move(src_path, dst_path)
 		
 			ball_num = digit_ocr(src_path, 1)
 			break
@@ -127,10 +128,16 @@ def digit_ocr(filename, mode):
 				num_file = crop_number(im, x, y, w, h)
 				number_files.append(num_file)
 				
+	if number_files == []:
+		print("game over")
+		return -100
+	
 	if mode == 0:
-		num = digit_predict.digit_predict(number_files)
+		num = digit_prediction.predict(number_files)
+		# num = digit_predict.digit_predict(number_files)
 	else:
-		num = blue_predict.digit_predict(number_files)
+		num = blue_prediction.predict(number_files)
+		# num = blue_predict.digit_predict(number_files)
 	
 	return num
 	
@@ -149,10 +156,30 @@ def crop_number(im, x, y, w, h):
 	
 	return filename
 	
+def swipeball(degree):
+	x = 360
+	y = 985
+	r = 200
+	
+	rx = x + (r * math.cos(math.radians(degree)))
+	ry = y - (r * math.sin(math.radians(degree)))
+	
+	os.system("nox_adb shell input swipe %d %d %d %d 250"%(x, y, rx, ry))
+	
+def restart():
+	x = 460
+	y = 900
+	
+	os.system("nox_adb shell input tap %d %d"%(x, y))
 def main():
 	filename = screenshot()
 	deleteFile()
 	position, ball_num, blue_ball = getPosition(filename)
+	
+	if position == None and ball_num == None and blue_ball == None:
+		print("game over")
+		restart()
+		return -1
 	
 	print("Box and green ball position")
 	for i in range(7):
@@ -163,8 +190,12 @@ def main():
 		print(str)
 	print("ball X:",blue_ball, "num:",ball_num)
 	
-	print("tan:", math.atan(13.0/72.0)*180/math.pi)
+	degree = random.randint(10, 170)
+	print("random", degree)
+	swipeball(degree)
 	
-		
 if __name__ == "__main__":
-	main()
+	while True:
+		main()
+		time.sleep(10)
+		
