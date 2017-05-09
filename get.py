@@ -6,6 +6,7 @@ import shutil
 import tensorflow as tf
 import digit_predict
 import blue_predict
+import math
 
 def screenshot():
 	files = os.listdir(os.getcwd() + "/screenshot")
@@ -17,21 +18,22 @@ def screenshot():
 	
 	filename = "screenshot_%04d.png"%(count)
 	
-	os.system("adb shell screencap -p /data/local/tmp/"+filename)
-	os.system("adb pull /data/local/tmp/"+filename)
+	os.system("nox_adb shell screencap -p /data/local/tmp/"+filename)
+	os.system("nox_adb pull /data/local/tmp/"+filename)
 	
 	os.rename(filename, "./screenshot/"+filename)
-	shutil.copyfile("./screenshot/"+filename, "/mnt/hgfs/SwipeBricksML/screenshot/"+filename)
+	# shutil.copyfile("./screenshot/"+filename, "/mnt/hgfs/SwipeBricksML/screenshot/"+filename)
 	# os.rename(filename, "/mnt/hgfs/SwipeBricksML/screenshot/"+filename)
 	
 	print(filename)
-	return "/mnt/hgfs/SwipeBricksML/screenshot/"+filename
+	return os.getcwd() + "/screenshot/" + filename
 	
 	
 def deleteFile():
 	cwd = os.getcwd()
 	
-	os.chdir("/mnt/hgfs/SwipeBricksML/crop_image")
+	# os.chdir("/mnt/hgfs/SwipeBricksML/crop_image")
+	os.chdir("crop_image")
 	files = os.listdir(os.getcwd())
 	
 	for file in files:
@@ -65,10 +67,10 @@ def getPosition(filename):
 			else:
 				box = (width, height, width + width_size, height + height_size)
 				region = img.crop(box)
-				crop_path = "/mnt/hgfs/SwipeBricksML/crop_image/crop_img[%d][%d].png"%(i, j)
+				crop_path = os.getcwd() + "/crop_image/crop_img[%d][%d].png"%(i, j)
 				
 				region.save("crop_image/crop_img[%d][%d].png"%(i, j))
-				shutil.move("crop_image/crop_img[%d][%d].png"%(i, j), crop_path)
+				# shutil.move("crop_image/crop_img[%d][%d].png"%(i, j), crop_path)
 				
 				num = digit_ocr(crop_path, 0)
 				
@@ -93,11 +95,11 @@ def getPosition(filename):
 			region = img.crop(box)
 			
 			src_path = "crop_image/ball_number.png"
-			dst_path = "/mnt/hgfs/SwipeBricksML/crop_image/ball_number.png"
+			dst_path = "crop_image/ball_number.png"
 			region.save(src_path)
-			shutil.move(src_path, dst_path)
+			# shutil.move(src_path, dst_path)
 		
-			ball_num = digit_ocr(dst_path, 1)
+			ball_num = digit_ocr(src_path, 1)
 			break
 			
 	return arr, ball_num, blue_ball
@@ -108,7 +110,7 @@ def digit_ocr(filename, mode):
 	blur = cv2.GaussianBlur(im, (5, 5), 0)
 	thresh = cv2.adaptiveThreshold(blur, 255, 1, 1, 11, 2)
 	
-	contours, hierarchy = cv2.findContours(thresh, 
+	_, contours, hierarchy = cv2.findContours(thresh, 
 		cv2.RETR_LIST, 
 		cv2.CHAIN_APPROX_SIMPLE)
 		
@@ -118,7 +120,7 @@ def digit_ocr(filename, mode):
 	number_files = []
 	
 	for cnt in contours:
-		if cv2.contourArea(cnt)>50:
+		if cv2.contourArea(cnt) > 50:
 			[x, y, w, h] = cv2.boundingRect(cnt)
 			
 			if 27 < h and h < 36 and w > 5:
@@ -135,13 +137,13 @@ def digit_ocr(filename, mode):
 def crop_number(im, x, y, w, h):
 	crop = im[y:y+h, x:x+w]
 	
-	with open("/mnt/hgfs/TrainingData/num.txt", 'r') as file:
+	with open("TrainingData/num.txt", 'r') as file:
 		lines = file.readlines()
 	
-	filename = "/mnt/hgfs/TrainingData/Training_%04d.png"%int(lines[0])
+	filename = "TrainingData/Training_%04d.png"%int(lines[0])
 	cv2.imwrite(filename, crop)	
 	
-	with open("/mnt/hgfs/TrainingData/num.txt", 'w') as file:
+	with open("TrainingData/num.txt", 'w') as file:
 		file.write("%d\n"%(int(lines[0]) + 1))
 		file.write("%d"%int(lines[1]))
 	
@@ -160,6 +162,8 @@ def main():
 			
 		print(str)
 	print("ball X:",blue_ball, "num:",ball_num)
+	
+	print("tan:", math.atan(13.0/72.0)*180/math.pi)
 	
 		
 if __name__ == "__main__":
