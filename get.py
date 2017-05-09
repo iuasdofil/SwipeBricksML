@@ -233,12 +233,12 @@ def main(round):
 	return 1
 	
 if __name__ == "__main__":
-	round = 0
+	round = 1
 	while True:
 		num = main(round)
 		time.sleep(10)
 		if num == -1:
-			round = 0
+			round = 1
 			continue
 			
 		round += num

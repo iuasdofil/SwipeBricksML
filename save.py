@@ -12,16 +12,14 @@ def one_hot(y_data, dimension):
 	return one_hot
 
 def main():
-	xy = np.loadtxt("/mnt/hgfs/SwipeBricksML/labeling/TrainingData_noPathNP.csv", 
-		delimiter=',')
+	xy = np.loadtxt("./blueball/train2_noPath.csv", delimiter=',')
 		
 	x_data = xy[:, :-1]
 	y_data = xy[:, [-1]]
 	y_data = one_hot(y_data, 10)
 	keep_prob = tf.placeholder(tf.float32)
 	
-	xy = np.loadtxt("/mnt/hgfs/SwipeBricksML/labeling/TestData_noPathNP.csv", 
-		delimiter=',')
+	xy = np.loadtxt("./blueball/train2_noPath.csv", delimiter=',')
 		
 	x_test = xy[:, :-1]
 	y_test = xy[:, [-1]]
@@ -68,7 +66,7 @@ def main():
 	print("learning finished")
 	
 	
-	saver.save(sess, "./save/digit_ocr/model")
+	saver.save(sess, "./save/blue_ocr/model")
 	print("prediction")
 	feed_dict = {X:x_test, keep_prob:1}
 	predictions = sess.run(tf.argmax(hypothesis, 1), feed_dict=feed_dict)
