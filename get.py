@@ -6,15 +6,25 @@ import shutil
 import tensorflow as tf
 import digit_predict
 import blue_predict
+import degree_predict
 import math
 import random, time
 import subprocess, shlex
+import socket, pickle
+import copy
 
+print("first")
 digit_prediction = digit_predict.digit_predict()
 digit_prediction.start()
 
-blue_prediction = blue_predict.blue_predict()
-blue_prediction.start()
+# print("second")
+# blue_prediction = blue_predict.blue_predict()
+# blue_prediction.start()
+
+# print("third")
+# degree_prediction = degree_predict.degree_predict()
+# degree_prediction.start()
+# print("after")
 
 def screenshot():
 	files = os.listdir(os.getcwd() + "/screenshot")
@@ -49,6 +59,9 @@ def getPosition(filename):
 
 	mid_h = [399, 479, 559, 639, 719, 799, 879]
 	mid_w = [59, 246, 299, 419, 539, 659]
+	
+	round_h = 70
+	round_w = 405
 
 	width_size = 115
 	height_size = 75
@@ -95,7 +108,7 @@ def getPosition(filename):
 			height = 985 + 35
 			width = x + 14 - 45
 			
-			box = (width, height, width + 85, height +35)
+			box = (0, 1020, 720, 1055)
 			region = img.crop(box)
 			
 			src_path = "crop_image/ball_number.png"
@@ -103,7 +116,16 @@ def getPosition(filename):
 		
 			ball_num = digit_ocr(src_path, 1)
 			break
-			
+	
+	box = (round_w, round_h, round_w + 70, round_h + 40)
+	region = img.crop(box)
+	crop_path = os.getcwd() + "/crop_image/round.png"
+	region.save(crop_path)
+	
+	num = digit_ocr(crop_path, 1)
+	print("round : %d"%num)
+	
+	img.close()
 	return arr, ball_num, blue_ball
 
 def digit_ocr(filename, mode):
@@ -125,7 +147,7 @@ def digit_ocr(filename, mode):
 		if cv2.contourArea(cnt) > 50:
 			[x, y, w, h] = cv2.boundingRect(cnt)
 			
-			if 27 < h and h < 36 and w > 5:
+			if 24 < h and h < 36 and w > 5:
 				num_file = crop_number(im, x, y, w, h)
 				number_files.append(num_file)
 				
@@ -137,7 +159,7 @@ def digit_ocr(filename, mode):
 		num = digit_prediction.predict(number_files)
 		# num = digit_predict.digit_predict(number_files)
 	else:
-		num = blue_prediction.predict(number_files)
+		num = digit_prediction.predict(number_files)
 		# num = blue_predict.digit_predict(number_files)
 	
 	return num
@@ -191,7 +213,6 @@ def restart():
 	os.system(start)
 	
 	time.sleep(8)
-		
 	os.system("nox_adb shell input tap %d %d"%(x, y))
 	
 def save_data(position, ball_num, blue_ball, round, degree):
@@ -205,13 +226,70 @@ def save_data(position, ball_num, blue_ball, round, degree):
 		file.write("%d,"%round)		# round
 		file.write("%d\n"%degree)	# degree
 		
+def get_degree(position, blue_ball, ball_num):
+	x_data = []
+	max = [0, 0]
+	HOST, PORT = "localhost", 2000
+	
+	address = ('localhost', 2000)
+	
+	
+	for i in range(7):
+		for j in range(6):
+			x_data.append(position[i][j])
+	
+	x_data.append(blue_ball)
+	x_data.append(ball_num)
+	
+	
+	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+		sock.connect((HOST, PORT))
+		sock.sendall(pickle.dumps(x_data))
+		predict = pickle.loads(sock.recv(40960))
+		
+	print(predict)
+	print(len(predict))
+	
+	idx = 0
+	max = 0
+	
+	for i, item in enumerate(predict):
+		if item > max:
+			max = item
+			idx = i
+	
+	idx += 10
+	print("max : %d, degree : %d"%(max, idx))
+	
+	return idx
+	
+	
+	# for degree in range(10, 171):
+		# with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+			# sock.connect((HOST, PORT))
+			# x = copy.deepcopy(origin)
+			# x.append(degree)
+			# x_data.append(degree)
+			# data_string = pickle.dumps(x_data)
+			
+			# sock.sendall(data_string)
+			# data = sock.recv(4096)
+			# predict = pickle.loads(data)
+			
+			# x_data.pop()
+		
+		# if predict[0] > max[0]:
+			# max[0] = predict[0]
+			# max[1] = degree
+		
+	# return max[1]
 
 def main(round):
 	filename = screenshot()
 	deleteFile()
 	position, ball_num, blue_ball = getPosition(filename)
 	
-	if position == None and ball_num == None and blue_ball == None:
+	if position is None and ball_num is None and blue_ball is None:
 		print("game over")
 		restart()
 		return -1
@@ -225,8 +303,9 @@ def main(round):
 		print(str)
 	print("ball X:",blue_ball, "num:",ball_num)
 	
-	degree = random.randint(10, 170)
-	print("random", degree)
+	degree = get_degree(position, blue_ball, ball_num)
+	# degree = random.randint(10, 170)
+	print("degree", degree)
 	swipeball(degree)
 	save_data(position, ball_num, blue_ball, round, degree)
 	
@@ -236,7 +315,7 @@ if __name__ == "__main__":
 	round = 1
 	while True:
 		num = main(round)
-		time.sleep(10)
+		time.sleep(15)
 		if num == -1:
 			round = 1
 			continue

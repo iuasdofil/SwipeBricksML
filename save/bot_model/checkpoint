@@ -1,0 +1,2 @@
+model_checkpoint_path: "bot"
+all_model_checkpoint_paths: "bot"

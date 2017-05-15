@@ -1,15 +1,14 @@
 import tensorflow as tf
 import numpy as np
 import cv2
-import os
 import threading
 
 class digit_predict(threading.Thread):
 	def __init__(self):
 		threading.Thread.__init__(self)
 		self.__sess = tf.Session()
-		self.__saver = tf.train.import_meta_graph("./save/digit_ocr/model.meta")
-		self.__saver.restore(self.__sess, tf.train.latest_checkpoint("./save/digit_ocr"))
+		self.__saver = tf.train.import_meta_graph("./save/digit/model.meta")
+		self.__saver.restore(self.__sess, tf.train.latest_checkpoint("./save/digit"))
 		self.__hypothesis = tf.get_collection('hypo')[0]
 		self.__input_vars = tf.get_collection('input')
 		self.__X = self.__input_vars[0]
