@@ -5,26 +5,16 @@ import cv2
 import shutil
 import tensorflow as tf
 import digit_predict
-import blue_predict
-import degree_predict
 import math
 import random, time
 import subprocess, shlex
 import socket, pickle
-import copy
 
-print("first")
 digit_prediction = digit_predict.digit_predict()
 digit_prediction.start()
 
-# print("second")
-# blue_prediction = blue_predict.blue_predict()
-# blue_prediction.start()
-
-# print("third")
 # degree_prediction = degree_predict.degree_predict()
 # degree_prediction.start()
-# print("after")
 
 def screenshot():
 	files = os.listdir(os.getcwd() + "/screenshot")
@@ -193,6 +183,9 @@ def restart():
 	x = 460
 	y = 900
 	
+	# os.system("nox_adb shell input tap %d %d"%(x, y))
+	
+	
 	name = "com.unity3d.player.UnityPlayerNativeActivity"
 	app = "com.Monthly23.SwipeBrickBreaker"
 	
@@ -209,11 +202,29 @@ def restart():
 	start = "nox_adb shell am start -a android.intent.action.MAIN -n %s/%s"%(app, name)
 	
 	os.system(kill)
-	time.sleep(3)
-	os.system(start)
+	time.sleep(6)
+	os.system("nox_adb shell input tap %d %d"%(300, 715))
+	# restart game with game guardian
+	# os.system(start)
 	
-	time.sleep(8)
-	os.system("nox_adb shell input tap %d %d"%(x, y))
+	time.sleep(5)
+	os.system("nox_adb shell input tap %d %d"%(x, y))	# touch replay game
+	
+	time.sleep(2)
+	os.system("nox_adb shell input swipe 220 180 220 180 4000")	# long press 4sec
+	# long press game guardian icon
+	
+	os.system("nox_adb shell input tap 385 180")	# game speed 1.2
+	os.system("nox_adb shell input tap 385 180")	# game speed 1.3
+	os.system("nox_adb shell input tap 385 180")	# game speed 1.5
+	os.system("nox_adb shell input tap 385 180")	# game speed 2
+	os.system("nox_adb shell input tap 385 180")	# game speed 3
+	os.system("nox_adb shell input tap 385 180")	# game speed 4
+	os.system("nox_adb shell input tap 385 180")	# game speed 5
+	os.system("nox_adb shell input tap 385 180")	# game speed 6
+	os.system("nox_adb shell input tap 385 180")	# game speed 9
+	os.system("nox_adb shell input tap 385 180")	# game speed 12
+	
 	
 def save_data(position, ball_num, blue_ball, round, degree):
 	with open("raw_data.csv", 'a') as file:
@@ -226,6 +237,7 @@ def save_data(position, ball_num, blue_ball, round, degree):
 		file.write("%d,"%round)		# round
 		file.write("%d\n"%degree)	# degree
 		
+
 def get_degree(position, blue_ball, ball_num):
 	x_data = []
 	max = [0, 0]
@@ -262,32 +274,12 @@ def get_degree(position, blue_ball, ball_num):
 	print("max : %d, degree : %d"%(max, idx))
 	
 	return idx
-	
-	
-	# for degree in range(10, 171):
-		# with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-			# sock.connect((HOST, PORT))
-			# x = copy.deepcopy(origin)
-			# x.append(degree)
-			# x_data.append(degree)
-			# data_string = pickle.dumps(x_data)
-			
-			# sock.sendall(data_string)
-			# data = sock.recv(4096)
-			# predict = pickle.loads(data)
-			
-			# x_data.pop()
-		
-		# if predict[0] > max[0]:
-			# max[0] = predict[0]
-			# max[1] = degree
-		
-	# return max[1]
 
 def main(round):
+	os.system("nox_adb shell input tap %d %d"%(15, 15))
 	filename = screenshot()
 	deleteFile()
-	position, ball_num, blue_ball = getPosition(filename)
+	position, ball_num, blue_ball = getPosition(filename)	
 	
 	if position is None and ball_num is None and blue_ball is None:
 		print("game over")
@@ -304,7 +296,6 @@ def main(round):
 	print("ball X:",blue_ball, "num:",ball_num)
 	
 	degree = get_degree(position, blue_ball, ball_num)
-	# degree = random.randint(10, 170)
 	print("degree", degree)
 	swipeball(degree)
 	save_data(position, ball_num, blue_ball, round, degree)
@@ -315,7 +306,7 @@ if __name__ == "__main__":
 	round = 1
 	while True:
 		num = main(round)
-		time.sleep(15)
+		time.sleep(2)
 		if num == -1:
 			round = 1
 			continue
