@@ -12,16 +12,17 @@ dis = 0.9
 REPLAY_MEMORY = 50000
 
 def simpleReplayTrain(DQN, trainBatch):
-    xStack = np.empty(0).reshape(0, DQN.__inputSize)
-    yStack = np.empty(0).reshape(0, DQN.__outputSize)
+    xStack = np.empty(0).reshape(0, 45)
+    yStack = np.empty(0).reshape(0, 161)
     
     for state, action, reward, nextState, done in trainBatch:
         Q = DQN.predict(state)
         
         if done:
-            Q[0, action] = reward
+            Q[0, action - 10] = reward
         else:
-            Q[0, action] = reward + dis * np.max(DQN.predict(nextState))
+            print("else action : %d"%action)
+            Q[0, action - 10] = reward + dis * np.argmax(DQN.predict(nextState))
         
         xStack = np.vstack([xStack, state])
         yStack = np.vstack([yStack, Q])
@@ -47,33 +48,33 @@ def main():
             
             while not done:
                 if np.random.rand(1) < e:
-                    degree = random.randrange(10, 170)
+                    action = random.randrange(10, 170)
                 else:
-                    degree = mainDQN.predict(state)[0] + 10
+                    action = mainDQN.predict(state)[0]
+                    action = np.argmax(action) + 10
+                    # action.index(max(action)) + 10
             
-                print("degree : %d" % degree)
-                nextState, reward, done = env.action(degree)
+                print("degree : %d" % action)
+                nextState, reward, done = env.action(action)
                 if done:
                     reward = -100
                 
-                replayBuffer.append((state, degree, reward, nextState, done))
+                replayBuffer.append((state, action, reward, nextState, done))
                 if len(replayBuffer) > REPLAY_MEMORY:
                     replayBuffer.popleft()
                     
                 state = nextState
                 stepCounter += 1
             
-        print("Episode : {} steps : {}".format(episode, stepCounter))
-        if stepCounter > 10000:
-            pass
-        
-        if episode % 10 == 1:
-            for _ in range(50):
-                miniBatch = random.sample(replayBuffer, 10)
-                loss, _ = simpleReplayTrain(mainDQN, miniBatch)
-            print("Loss : {}".foramt(loss))
+            print("Episode : {} steps : {}".format(episode, stepCounter))
+            if stepCounter > 10000:
+                pass
+            
+            if episode % 10 == 1:
+                for _ in range(50):
+                    miniBatch = random.sample(replayBuffer, 10)
+                    loss, _ = simpleReplayTrain(mainDQN, miniBatch)
+                print("Loss :", loss)
     
-    
-
 if __name__ == "__main__":
     main()

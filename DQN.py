@@ -29,7 +29,7 @@ class DQN:
             
     def predict(self, state):
         x = np.reshape(state, [1, self.__inputSize])
-        return self.__session.run(tf.argmax(self.__Qpred, 1), feed_dict={self.__X : x})
+        return self.__session.run(self.__Qpred, feed_dict={self.__X : x})
     
     def update(self, xStack, yStack):
         return self.__session.run([self.__loss, self.__train], feed_dict={self.__X: xStack, self.__Y: yStack})

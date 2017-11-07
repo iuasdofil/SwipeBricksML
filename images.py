@@ -27,6 +27,7 @@ class Images(object):
         self.__util = utils.Utils(rootPath)
 
     def restart(self):
+        print("restart")
         x = 460
         y = 900
     
