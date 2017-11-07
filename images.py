@@ -3,6 +3,7 @@ import numpy as np
 from PIL import Image
 import cv2
 import ocr
+import math
 
 class Images(object):
     def __init__(self, rootPath):
@@ -16,23 +17,52 @@ class Images(object):
         self.__widthSize = 115
         self.__heightSize = 75
         self.__OCR = ocr.OCR()
-
-    def getGameStatus(self, filename):
-        status = np.zeros((7, 6))
-        gameRound = 0
+        self.__state = np.zeros((7, 6))
+        self.__prevState = np.zeros((7, 6))
+        self.__gameRound = 0
         
-        self.cropBricks(filename, status)
-        self.getGreenBall(filename, status)
-        gameRound = self.getRound(filename)
+    def getReward(self):
+        reward = 0
+        
+        for cRow, pRow in zip(self.__state[1:], self.__prevState[:-1]):
+            for current, prev in zip(cRow, pRow):
+                if prev >= 0:
+                    reward += (prev - current)
+                elif prev == -1 and current == 0:
+                    reward += 1
+
+        return reward
+        
+    def action(self, degree):
+        x = 360
+        y = 985
+        r = 200
+        
+        rx = x + (r * math.cos(math.radians(degree)))
+        ry = y - (r * math.sin(math.radians(degree)))
+        
+        os.system("nox_adb shell input swipe %d %d %d %d 250" % (x, y, rx, ry))
+        
+        self.__prevState = np.copy(self.__state)
+
+    def getGameState(self, filename):
+        self.__gameRound = self.getRound(filename)
+        
+        if self.__gameRound == -100:
+            return -100, -100, -100, -100
+            
+        self.cropBricks(filename)
+        self.getGreenBall(filename)
         xPosition, ballNumber = self.findBlueBall(filename)
     
-        return status, gameRound, xPosition, ballNumber
+        return self.__state, self.__gameRound, xPosition, ballNumber
     
-    def cropBricks(self, filename, status):
+    def cropBricks(self, filename):
         img = Image.open(filename)
         rgb = img.convert("RGB")
         rgb = np.array(rgb, np.uint8)
         rgb = np.reshape(rgb, (1280, -1, 3))
+        self.__state.fill(0)
         
         for i, height in enumerate(self.__heights):
             for j, width in enumerate(self.__widths):
@@ -45,11 +75,11 @@ class Images(object):
                     region = img.crop(box)
                     cropPath = "%s/croppedImages/cropImg[%d][%d].png" % (self.__rootPath, i, j)
                     region.save(cropPath)
-                    status[i][j] = self.getNumber(cropPath)
+                    self.__state[i][j] = self.getNumber(cropPath)
                     
         img.close()
     
-    def getGreenBall(self, filename, status):
+    def getGreenBall(self, filename):
         img = Image.open(filename)
         rgb = img.convert("RGB")
         rgb = np.array(rgb, np.uint8)
@@ -60,9 +90,7 @@ class Images(object):
                 r, g, b = rgb[height][width]
                 
                 if(55 < r and r < 60) and (210 < g and g < 215) and (95 < b and b < 100):
-                    status[i][j] = -1
-        
-        return status
+                    self.__state[i][j] = -1
         
     def getRound(self, filename):
         img = Image.open(filename)
