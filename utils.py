@@ -9,6 +9,7 @@ class Utils(object):
         print(self.__rootPath)
         
     def screenshot(self):
+        self.deleteFile()
         os.system("nox_adb shell screencap -p /data/local/tmp/screenshot.png")
         os.system("nox_adb pull /data/local/tmp/screenshot.png")
         os.rename("screenshot.png", "./screenshot/screenshot.png")

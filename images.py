@@ -4,6 +4,10 @@ from PIL import Image
 import cv2
 import ocr
 import math
+import utils
+import shlex
+import subprocess
+import time
 
 class Images(object):
     def __init__(self, rootPath):
@@ -17,10 +21,125 @@ class Images(object):
         self.__widthSize = 115
         self.__heightSize = 75
         self.__OCR = ocr.OCR()
-        self.__state = np.zeros((7, 6))
-        self.__prevState = np.zeros((7, 6))
+        self.__state = np.zeros((7, 6), dtype=np.int)
+        self.__prevState = np.zeros((7, 6), dtype=np.int)
         self.__gameRound = 0
+        self.__util = utils.Utils(rootPath)
+
+    def restart(self):
+        x = 460
+        y = 900
+    
+        name = "com.unity3d.player.UnityPlayerNativeActivity"
+        app = "com.Monthly23.SwipeBrickBreaker"
+    
+        args = shlex.split("nox_adb shell ps")
+        lines = subprocess.getoutput(args).split("\n")
+        pid = 0
+    
+        for line in lines:
+            if line.find("SwipeBrickBreaker") >= 0:
+                term = line.split()
+                pid = int(term[1])
+    
+        kill = "nox_adb shell kill %d" % pid
+        start = "nox_adb shell am start -a android.intent.action.MAIN -n %s/%s" % (app, name)
+    
+        os.system(kill)
+        time.sleep(6)
+        os.system("nox_adb shell input tap %d %d" % (300, 715))
+        # restart game with game guardian
+        # os.system(start)
+    
+        time.sleep(5)
+        os.system("nox_adb shell input tap %d %d" % (x, y))  # touch replay game
+    
+        time.sleep(2)
+        os.system("nox_adb shell input swipe 200 180 220 180 4000")  # long pree 4sec
         
+        # long press game guardian icon
+    
+        print("game speed")
+        os.system("nox_adb shell input tap 385 180")  # game speed 1.2
+        os.system("nox_adb shell input tap 385 180")  # game speed 1.3
+        os.system("nox_adb shell input tap 385 180")  # game speed 1.5
+        os.system("nox_adb shell input tap 385 180")  # game speed 2
+        os.system("nox_adb shell input tap 385 180")  # game speed 3
+        os.system("nox_adb shell input tap 385 180")  # game speed 4
+        os.system("nox_adb shell input tap 385 180")  # game speed 5
+        os.system("nox_adb shell input tap 385 180")  # game speed 6
+        os.system("nox_adb shell input tap 385 180")  # game speed 9
+        os.system("nox_adb shell input tap 385 180")  # game speed 12
+        
+        self.__gameRound = 0
+        self.__state = np.zeros((7, 6), dtype=np.int)
+        self.__prevState = np.zeros((7, 6), dtype=np.int)
+        
+    def initState(self):
+        imgPath = self.__util.screenshot()
+        
+        self.getRound()
+        self.cropBricks(imgPath)
+        self.getGreenBall(imgPath)
+        xPosition, ballNumber = self.findBlueBall(imgPath)
+        
+        ret = sum(self.__state.tolist(), [])
+        ret.append(self.__gameRound)
+        ret.append(xPosition)
+        ret.append(ballNumber)
+        
+        return ret
+    
+    def action(self, degree):
+        x = 360
+        y = 985
+        r = 200
+
+        rx = x + (r * math.cos(math.radians(degree)))
+        ry = y - (r * math.sin(math.radians(degree)))
+
+        os.system("nox_adb shell input swipe %d %d %d %d 250" % (x, y, rx, ry))
+        
+        self.__prevState = np.copy(self.__state)
+        
+        # return next_state, reward, done, _
+        
+        if not self.getRound():
+            ret = sum(self.__state.tolist(), [])
+            ret.append(self.__gameRound)
+            ret.append(-100)
+            ret.append(-100)
+            
+            return ret, -100, True
+        
+        imgPath = self.__util.screenshot()
+        self.cropBricks(imgPath)
+        self.getGreenBall(imgPath)
+        xPosition, ballNumber = self.findBlueBall(imgPath)
+        
+        ret = sum(self.__state.tolist(), [])
+        ret.append(self.__gameRound)
+        ret.append(xPosition)
+        ret.append(ballNumber)
+        
+        return ret, self.getReward(), False
+    
+    def getRound(self):
+        while True:
+            img = Image.open(self.__util.screenshot())
+            box = (self.__round_w, self.__round_h, self.__round_w + 70, self.__round_h + 40)
+            region = img.crop(box)
+            roundImg = "%s/croppedImages/round.png" % self.__rootPath
+            region.save(roundImg)
+            img.close()
+            
+            gameRound = self.getNumber(roundImg)
+            if self.__gameRound < gameRound:
+                self.__gameRound = gameRound
+                return True
+            elif gameRound == -100:
+                return False
+    
     def getReward(self):
         reward = 0
         
@@ -32,33 +151,9 @@ class Images(object):
                     reward += 1
 
         return reward
-        
-    def action(self, degree):
-        x = 360
-        y = 985
-        r = 200
-        
-        rx = x + (r * math.cos(math.radians(degree)))
-        ry = y - (r * math.sin(math.radians(degree)))
-        
-        os.system("nox_adb shell input swipe %d %d %d %d 250" % (x, y, rx, ry))
-        
-        self.__prevState = np.copy(self.__state)
-
-    def getGameState(self, filename):
-        self.__gameRound = self.getRound(filename)
-        
-        if self.__gameRound == -100:
-            return -100, -100, -100, -100
-            
-        self.cropBricks(filename)
-        self.getGreenBall(filename)
-        xPosition, ballNumber = self.findBlueBall(filename)
     
-        return self.__state, self.__gameRound, xPosition, ballNumber
-    
-    def cropBricks(self, filename):
-        img = Image.open(filename)
+    def cropBricks(self, imgPath):
+        img = Image.open(imgPath)
         rgb = img.convert("RGB")
         rgb = np.array(rgb, np.uint8)
         rgb = np.reshape(rgb, (1280, -1, 3))
@@ -79,8 +174,8 @@ class Images(object):
                     
         img.close()
     
-    def getGreenBall(self, filename):
-        img = Image.open(filename)
+    def getGreenBall(self, imgPath):
+        img = Image.open(imgPath)
         rgb = img.convert("RGB")
         rgb = np.array(rgb, np.uint8)
         rgb = np.reshape(rgb, (1280, -1, 3))
@@ -91,19 +186,9 @@ class Images(object):
                 
                 if(55 < r and r < 60) and (210 < g and g < 215) and (95 < b and b < 100):
                     self.__state[i][j] = -1
-        
-    def getRound(self, filename):
-        img = Image.open(filename)
-        box = (self.__round_w, self.__round_h, self.__round_w + 70, self.__round_h + 40)
-        region = img.crop(box)
-        roundImg = "%s/croppedImages/round.png" % self.__rootPath
-        region.save(roundImg)
-        img.close()
 
-        return self.getNumber(roundImg)
-
-    def findBlueBall(self, filename):
-        img = Image.open(filename)
+    def findBlueBall(self, imgPath):
+        img = Image.open(imgPath)
         rgb = img.convert("RGB")
         rgb = np.array(rgb, np.uint8)
         rgb = np.reshape(rgb, (1280, -1, 3))
@@ -127,8 +212,8 @@ class Images(object):
         img.close()
         return blueBall, ballNumber
     
-    def getNumber(self, filename):
-        im = cv2.imread(filename)
+    def getNumber(self, imgPath):
+        im = cv2.imread(imgPath)
         im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(im, (5, 5), 0)
         thresh = cv2.adaptiveThreshold(blur, 255, 1, 1, 11, 2)
@@ -148,7 +233,6 @@ class Images(object):
                     numFiles.append(number)
                     
         if numFiles == []:
-            print("game over")
             return -100
         
         return self.__OCR.predict(numFiles)
