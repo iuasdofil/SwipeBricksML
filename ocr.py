@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import cv2
 
+
 class OCR(object):
     def __init__(self):
         self.__sess = tf.Session()
@@ -12,49 +13,41 @@ class OCR(object):
         self.__X = self.__input_vars[0]
         self.__Y = self.__input_vars[1]
         self.__keep_prob = self.__input_vars[2]
-    
-    def predict(self, number_files):
+
+    def predict(self, numberFiles):
         csv = "temp.csv"
-        
-        with open(csv, 'w') as file:
-            for filename in number_files:
-                img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
-                height, width = img.shape
-                
-                if height > 32:
-                    height = 32
-                if width > 24:
-                    width = 24
-                
-                for y in range(height):
-                    for x in range(width):
-                        file.write("%d,"%img[y, x])
-                    for x in range(24-width):
-                        file.write("0,")
-                        
-                for y in range(32-height):
-                    for x in range(24):
-                        file.write("0,")
-                file.write("0\n")
-                
-        xy = np.loadtxt("temp.csv", delimiter=',')
-        try:
-            x_test = xy[:, :-1]
-            y_test = xy[:, [-1]]
-        except:
-            x_test = xy[:-1]
-            y_test = xy[-1]
-            x_test = np.reshape(x_test, (-1, 768))
-        
-        feed_dict = {self.__X:x_test, self.__keep_prob:1}
-        
+        xData = []
+        for filename in numberFiles:
+            img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+            height, width = img.shape
+
+            if height > 32:
+                height = 32
+            if width > 24:
+                width = 24
+
+            data = []
+            for y in range(height):
+                for x in range(width):
+                    data.append(img[y, x])
+                for x in range(24 - width):
+                    data.append(0)
+            for y in range(32 - height):
+                for x in range(24):
+                    data.append(0)
+
+            xData.append(data)
+
+        xData = np.array(xData)
+        feed_dict = {self.__X: xData, self.__keep_prob: 1}
+
         predictions = self.__sess.run(tf.argmax(self.__hypothesis, 1), feed_dict=feed_dict)
-        
+
         num = 0
         idx = 1
-        
+
         for predic in predictions:
             num += predic * idx
             idx *= 10
-            
+
         return num
