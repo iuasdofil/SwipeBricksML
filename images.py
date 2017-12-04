@@ -49,29 +49,29 @@ class Images(object):
 
         os.system(kill)
         time.sleep(3)
-        os.system("nox_adb shell input tap %d %d" % (300, 715))
+        # os.system("nox_adb shell input tap %d %d" % (300, 715))
         # restart game with game guardian
-        # os.system(start)
+        os.system(start)
 
-        time.sleep(2)
+        time.sleep(5)
         os.system("nox_adb shell input tap %d %d" % (x, y))  # touch replay game
-
-        time.sleep(2)
-        os.system("nox_adb shell input swipe 200 180 220 180 4000")  # long pree 4sec
+        #
+        # time.sleep(2)
+        # os.system("nox_adb shell input swipe 200 180 220 180 4000")  # long pree 4sec
 
         # long press game guardian icon
 
-        print("game speed")
-        os.system("nox_adb shell input tap 385 180")  # game speed 1.2
-        os.system("nox_adb shell input tap 385 180")  # game speed 1.3
-        os.system("nox_adb shell input tap 385 180")  # game speed 1.5
-        os.system("nox_adb shell input tap 385 180")  # game speed 2
-        os.system("nox_adb shell input tap 385 180")  # game speed 3
-        os.system("nox_adb shell input tap 385 180")  # game speed 4
-        os.system("nox_adb shell input tap 385 180")  # game speed 5
-        os.system("nox_adb shell input tap 385 180")  # game speed 6
-        os.system("nox_adb shell input tap 385 180")  # game speed 9
-        os.system("nox_adb shell input tap 385 180")  # game speed 12
+        # print("game speed")
+        # os.system("nox_adb shell input tap 385 180")  # game speed 1.2
+        # os.system("nox_adb shell input tap 385 180")  # game speed 1.3
+        # os.system("nox_adb shell input tap 385 180")  # game speed 1.5
+        # os.system("nox_adb shell input tap 385 180")  # game speed 2
+        # os.system("nox_adb shell input tap 385 180")  # game speed 3
+        # os.system("nox_adb shell input tap 385 180")  # game speed 4
+        # os.system("nox_adb shell input tap 385 180")  # game speed 5
+        # os.system("nox_adb shell input tap 385 180")  # game speed 6
+        # os.system("nox_adb shell input tap 385 180")  # game speed 9
+        # os.system("nox_adb shell input tap 385 180")  # game speed 12
 
         self.__gameRound = 0
         self.__state = np.zeros((7, 6), dtype=np.int)
@@ -128,7 +128,7 @@ class Images(object):
 
     def getRound(self):
         while True:
-            time.sleep(1)
+            time.sleep(2)
             img = Image.open(self.__util.screenshot())
             box = (self.__round_w, self.__round_h, self.__round_w + 70, self.__round_h + 40)
             region = img.crop(box)

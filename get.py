@@ -5,6 +5,9 @@ import DQN
 from collections import deque
 import tensorflow as tf
 import random
+import requests
+import json
+import time
 
 dis = 0.9
 REPLAY_MEMORY = 50000
@@ -17,7 +20,7 @@ def simpleReplayTrain(DQN, trainBatch):
     for state, action, reward, nextState, done in trainBatch:
         Q = DQN.predict(state)
 
-        if done:
+        if not done:
             Q[0, action - 10] = reward
         else:
             Q[0, action - 10] = reward + dis * np.argmax(DQN.predict(nextState))
@@ -61,6 +64,30 @@ def main():
                     reward = -100
 
                 replayBuffer.append((state, action, reward, nextState, done))
+                print("next State length : %d" % len(nextState))
+
+                # URL = "http://192.168.190.130:8000/"
+                URL = "http://35.200.208.151/"
+                current_state = ",".join(map(str, state[:42]))
+                next_state = ",".join(map(str, nextState[:42]))
+                round = nextState[42]
+                ball_position = nextState[43]
+                ball_number = nextState[44]
+
+                print("------------------------------------------------------------")
+                print("current_state : %s" % type(current_state))
+                print("next_state : %s" % type(next_state))
+                print("round : %s" % type(round))
+                print("ball_position : %s" % type(ball_position))
+                print("action : %s" % type(action))
+                print("done : %s" % type(done))
+
+                requests.post(URL, data=json.dumps({"current_state" : current_state, "next_state" : next_state,
+                                                    "round" : int(round), "ball_position" : ball_position,
+                                                    "ball_number" : int(ball_number),
+                                                    "action" : int(action),
+                                                    "done" : done }))
+
                 if len(replayBuffer) > REPLAY_MEMORY:
                     replayBuffer.popleft()
 
@@ -68,10 +95,8 @@ def main():
                 stepCounter += 1
 
             print("Episode : {} steps : {}".format(episode, stepCounter))
-            if stepCounter > 10000:
-                pass
 
-            if episode % 10 == 1:
+            if episode % 10 == 2:
                 for _ in range(50):
                     miniBatch = random.sample(replayBuffer, 10)
                     loss, _ = simpleReplayTrain(mainDQN, miniBatch)
